@@ -68,24 +68,27 @@ class BastionHostStack(Stack):
     )
 
     commands = '''
+amazon-linux-extras install epel -y
 yum update -y
 yum install -y jq
-# yum install -y python3.7
+yum groupinstall -y "Development Tools"
+yum install -y openssl-devel libffi-devel libffi-devel bzip2-devel
 
-# cd /home/ec2-user
-# wget https://bootstrap.pypa.io/get-pip.py
-# su -c "python3.7 get-pip.py --user" -s /bin/sh ec2-user
-# su -c "/home/ec2-user/.local/bin/pip3 install boto3 --user" -s /bin/sh ec2-user
+cd /home/ec2-user
+wget https://download.redis.io/releases/redis-6.2.14.tar.gz
+tar xvf redis-6.2.14.tar.gz
+cd redis-6.2.14
+make BUILD_TLS=yes
+make install
+cd ../../
 '''
 
     commands += f'''
-# su -c "/home/ec2-user/.local/bin/pip3 install -U boto3 mimesis --user" -s /bin/sh ec2-user
-cp {USER_DATA_LOCAL_PATH} /home/ec2-user/gen_fake_mysql_data.py & chown -R ec2-user /home/ec2-user/gen_fake_mysql_data.py
+su -c "pip3 install -U boto3 mimesis==4.1.3 --user" -s /bin/sh ec2-user
+cp {USER_DATA_LOCAL_PATH} /home/ec2-user/gen_fake_data.py & chown -R ec2-user /home/ec2-user/gen_fake_data.py
 '''
 
     bastion_host.user_data.add_commands(commands)
-
-    self.sg_bastion_host = sg_bastion_host
 
 
     cdk.CfnOutput(self, 'EC2InstancePublicDNS',

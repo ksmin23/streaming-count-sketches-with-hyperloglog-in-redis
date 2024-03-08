@@ -56,3 +56,11 @@ command.
  * `cdk docs`        open CDK documentation
 
 Enjoy!
+
+## References
+
+ * [Redis engine versions - Amazon MemoryDB for Redis](https://docs.aws.amazon.com/memorydb/latest/devguide/engine-versions.html)
+ * [Connect to a MemoryDB cluster (Linux)](https://docs.aws.amazon.com/memorydb/latest/devguide/getting-startedclusters.connecttonode.html#getting-startedclusters.connecttonode.redis.linux)
+   <pre>
+   redis-cli -c -h <i>{Primary or Configuration Endpoint}</i> --tls -p 6379 --user <i>{user_name}</i> -a <i>{password}</i>
+   </pre>

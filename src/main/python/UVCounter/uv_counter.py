@@ -11,15 +11,15 @@ import traceback
 from datetime import datetime
 
 import boto3
-import redis
+from rediscluster import RedisCluster
 
 
 REDIS_KEY_FORMAT = 'uv:site_id={site_id}:{daily_basic_dt}'
 
 AWS_REGION = os.getenv('REGION_NAME', 'us-east-1')
 
-REDIS_HOST = os['REDIS_HOST']
-MEMORYDB_SECRET_ID = os['MEMORYDB_SECRET_NAME']
+REDIS_HOST = os.environ['REDIS_HOST']
+MEMORYDB_SECRET_ID = os.environ['MEMORYDB_SECRET_NAME']
 
 redis_client = None
 
@@ -38,10 +38,16 @@ def get_or_create_redis_client():
     creds = get_credentials(MEMORYDB_SECRET_ID, AWS_REGION)
     USER, PASSWORD = creds['username'], creds['password']
 
-    redis_client = redis.Redis(host=REDIS_HOST, port=6379,
-                              username=USER, password=PASSWORD,
-                              ssl=True, ssl_cert_reqs="none",
-                              decode_responses=True)
+    redis_cluster_options = {
+      'startup_nodes': [{"host": REDIS_HOST, "port": 6379}],
+      'decode_responses': True,
+      'skip_full_coverage_check': True,
+      'ssl': True,
+      'username': USER,
+      'password': PASSWORD
+    }
+
+    redis_client = RedisCluster(**redis_cluster_options)
 
   return redis_client
 
@@ -53,6 +59,11 @@ def list_split(arr, n):
 
 def lambda_handler(event, context):
   redis_client = get_or_create_redis_client()
+  if redis_client.ping():
+    print('[INFO] Connected to MemoryDB')
+  else:
+    print('[ERROR] Not Connected to MemoryDB')
+    raise RuntimeError()
 
   counter = collections.OrderedDict([
     ('reads', 0),
@@ -81,14 +92,13 @@ def lambda_handler(event, context):
   site_list = list(data.keys())
   chunk_size = 3 # need to be adjusted
   for elems in list_split(site_list, chunk_size):
-    # print(elems) # debug
     try:
       with redis_client.pipeline() as pipe:
         for key_elem in elems:
           site_id, daily_basic_dt = key_elem.split(':')
           k = REDIS_KEY_FORMAT.format(site_id=site_id, daily_basic_dt=daily_basic_dt)
           pipe.pfadd(k, *data[key_elem])
-          pipe.expire(k, 86400+3600, nx=True)
+          pipe.expire(k, 86400)
         pipe.execute()
       counter['writes'] += len(elems)
     except Exception as ex:

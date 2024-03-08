@@ -25,9 +25,9 @@ class LambdaLayersStack(Stack):
       S3_BUCKET_LAMBDA_LAYER_LIB)
 
     redis_lib_layer = aws_lambda.LayerVersion(self, "RedisLib",
-      layer_version_name="redis-lib",
+      layer_version_name="redis-py-cluster-lib",
       compatible_runtimes=[aws_lambda.Runtime.PYTHON_3_11],
-      code=aws_lambda.Code.from_bucket(s3_lib_bucket, "var/redis-lib.zip")
+      code=aws_lambda.Code.from_bucket(s3_lib_bucket, "var/redis-py-cluster-lib.zip")
     )
 
     self.lambda_layers = [redis_lib_layer]

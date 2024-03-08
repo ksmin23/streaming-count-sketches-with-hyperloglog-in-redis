@@ -8,8 +8,8 @@ import aws_cdk as cdk
 
 from aws_cdk import (
   Stack,
+  aws_iam,
   aws_lambda,
-  aws_s3 as s3,
   aws_logs
 )
 from constructs import Construct
@@ -49,12 +49,18 @@ class LambdaFunctionStack(Stack):
       vpc=vpc
     )
 
+    lambda_fn.add_to_role_policy(aws_iam.PolicyStatement(
+      effect=aws_iam.Effect.ALLOW,
+      resources=["arn:aws:secretsmanager:*:*:*"],
+      actions=["secretsmanager:GetSecretValue"])
+    )
+
     kinesis_event_source = KinesisEventSource(source_kinesis_stream,
       batch_size=1000, starting_position=aws_lambda.StartingPosition.LATEST)
     lambda_fn.add_event_source(kinesis_event_source)
 
     log_group = aws_logs.LogGroup(self, "UVCounterLogGroup",
-      log_group_name=f"/aws/lambda/{lambda_fn.function_name}",
+      log_group_name=f"/aws/lambda/UVCounter",
       removal_policy=cdk.RemovalPolicy.DESTROY, #XXX: for testing
       retention=aws_logs.RetentionDays.THREE_DAYS)
     log_group.grant_write(lambda_fn)
