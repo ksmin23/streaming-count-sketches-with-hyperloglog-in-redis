@@ -210,5 +210,7 @@ Enjoy!
    redis-cli -c -h <i>{Primary or Configuration Endpoint}</i> --tls -p 6379 --user <i>{user_name}</i> -a <i>{password}</i>
    </pre>
  * [How to create a Lambda layer using a simulated Lambda environment with Docker](https://aws.amazon.com/premiumsupport/knowledge-center/lambda-layer-simulated-docker/)
+ * [Amazon MemoryDB for Redis Immersion Day](https://catalog.us-east-1.prod.workshops.aws/workshops/23394eff-66dd-421a-9513-efe12b9197d0/en-US)
+ * [Amazon ElastiCache for Redis Immersion Day](https://catalog.us-east-1.prod.workshops.aws/workshops/17043d97-f284-49db-b2d5-528e80546899/en-US)
  * [Redis Commands](https://redis.io/commands/)
  * [HyperLogLog in Redis](https://redis.io/docs/data-types/probabilistic/hyperloglogs/)
