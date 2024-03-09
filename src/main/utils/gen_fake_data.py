@@ -4,6 +4,7 @@
 
 import sys
 import argparse
+import collections
 import datetime
 import json
 import random
@@ -24,6 +25,7 @@ from mimesis.schema import Field, Schema
 from mimesis.providers.base import BaseProvider
 
 random.seed(47)
+
 
 class CustomDatetimeProvider(BaseProvider):
   class Meta:
@@ -65,23 +67,30 @@ class CustomDatetimeProvider(BaseProvider):
     return datetime_obj.strftime(fmt)
 
 
+def mk_redis_key(json_data):
+  REDIS_KEY_FORMAT = 'uv:site_id={site_id}:{daily_basic_dt}'
+
+  user_id, site_id, event_time = [json_data[k] for k in ('user_id', 'site_id', 'event_time')]
+  event_time = datetime.datetime.strptime(event_time, '%Y-%m-%d %H:%M:%S')
+  daily_basic_dt = event_time.strftime('%Y%m%d')
+
+  key = REDIS_KEY_FORMAT.format(site_id=site_id, daily_basic_dt=daily_basic_dt)
+  return key
+
+
 def put_records_to_kinesis(client, options, payload_list):
-  MAX_RETRY_COUNT = 1
 
   if options.dry_run:
     print(json.dumps(payload_list, ensure_ascii=False))
     return
 
-  for _ in range(MAX_RETRY_COUNT):
-    try:
-      response = client.put_records(Records=payload_list, StreamName=options.stream_name)
-      if options.verbose:
-        print('[KINESIS]', response, file=sys.stderr)
-      break
-    except Exception as ex:
-      traceback.print_exc()
-      time.sleep(random.randint(1, 10))
-  else:
+  try:
+    response = client.put_records(Records=payload_list, StreamName=options.stream_name)
+    failed_record_count = response['FailedRecordCount']
+    if failed_record_count:
+      print(f'[Kinesis Data Streams] FailedRecordCount={failed_record_count}', file=sys.stderr)
+  except Exception as ex:
+    traceback.print_exc()
     raise RuntimeError('[ERROR] Failed to put_records into stream: {}'.format(options.stream_name))
 
 
@@ -98,15 +107,13 @@ def main():
 
   options = parser.parse_args()
 
-  _USERS = ['user-875', 'user-190', 'user-646', 'user-033', 'user-672']
-
   #XXX: For more information about synthetic data schema, see
   # https://github.com/aws-samples/aws-glue-streaming-etl-blog/blob/master/config/generate_data.py
   _ = Field(locale=locales.EN, providers=[CustomDatetimeProvider])
 
   _schema = Schema(schema=lambda: {
-    "user_id": _("choice", items=_USERS),
-    "site_id": _("choice", items=[489, 715, 283]),
+    "user_id": f"u-{_('identifier', mask='###-##')}",
+    "site_id": _("choice", items=[489, 715, 283, 190, 875]),
     "event": _("choice", items=['view', 'like', 'cart', 'purchase']),
     "sku": _("pin", mask='@@####@@@@'),
     "amount":  _("integer_number", start=1, end=10),
@@ -115,15 +122,23 @@ def main():
 
   client = boto3.client(options.service_name, region_name=options.region_name) if options.service_name != 'console' else None
 
+  uv_counter_keys = collections.Counter()
   cnt = 0
+
   payload_list = []
   for record in _schema.create(options.max_count):
     cnt += 1
+
+    redis_key = mk_redis_key(record)
+    uv_counter_keys[redis_key] += 1
 
     data = f"{json.dumps(record)}\n"
     if options.dry_run or options.service_name == 'console':
       print(data, file=sys.stderr)
       continue
+
+    if options.verbose:
+      print(data, file=sys.stderr)
 
     partition_key = 'part-{:05}'.format(random.randint(1, 1024))
     payload_list.append({'Data': data, 'PartitionKey': partition_key})
@@ -138,6 +153,8 @@ def main():
     put_records_to_kinesis(client, options, payload_list)
 
   print(f'[INFO] Total {cnt} records are processed', file=sys.stderr)
+  print('[INFO] Keys in Amazon MemoryDB:', file=sys.stderr)
+  print('\n'.join([k for k in uv_counter_keys.keys()]), file=sys.stderr)
 
 
 if __name__ == '__main__':

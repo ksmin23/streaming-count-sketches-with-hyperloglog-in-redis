@@ -24,7 +24,7 @@ class BastionHostStack(Stack):
       vpc=vpc,
       allow_all_outbound=True,
       description='security group for an bastion host',
-      security_group_name=f'bastion-host-sg-{self.stack_name}'
+      security_group_name=f'bastion-host-sg-{self.stack_name.lower()}'
     )
     cdk.Tags.of(sg_bastion_host).add('Name', 'bastion-host-sg')
 
@@ -80,7 +80,6 @@ tar xvf redis-6.2.14.tar.gz
 cd redis-6.2.14
 make BUILD_TLS=yes
 make install
-cd ../../
 '''
 
     commands += f'''
