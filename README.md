@@ -214,3 +214,7 @@ Enjoy!
  * [Amazon ElastiCache for Redis Immersion Day](https://catalog.us-east-1.prod.workshops.aws/workshops/17043d97-f284-49db-b2d5-528e80546899/en-US)
  * [Redis Commands](https://redis.io/commands/)
  * [HyperLogLog in Redis](https://redis.io/docs/data-types/probabilistic/hyperloglogs/)
+ * [Probabilistic Data Structures in Redis](https://redis.com/blog/streaming-analytics-with-probabilistic-data-structures/)
+   * Bloom filters, Cuckoo filters, Count-Min Sketch, Top-K, HyperLogLog
+ * [Using HyperLogLog sketches in Amazon Redshift](https://docs.aws.amazon.com/redshift/latest/dg/hyperloglog-overview.html)
+
